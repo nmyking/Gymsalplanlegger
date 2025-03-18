@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <title>Gymsal Planlegger</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            padding: 20px;
+            gap: 20px;
+        }
+        .sidebar {
+            width: 220px;
+            padding: 10px;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            overflow-y: auto;
+            height: 600px;
+        }
+        .item {
+            padding: 8px;
+            margin: 8px;
+            border: 2px solid;
+            cursor: grab;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .gymsal {
+            width: 860px;
+            height: 445px;
+            border: 3px dashed #888;
+            border-radius: 10px;
+            position: relative;
+            background-color: #f9f9f9;
+        }
+        .dropped {
+            position: absolute;
+            cursor: move;
+            border: 2px solid;
+            border-radius: 5px;
+            font-size: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-sizing: border-box;
+            color: #000;
+            font-weight: bold;
+        }
+        .trash, #saveBtn {
+            width: 120px;
+            height: 50px;
+            cursor: pointer;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            right: 20px;
+        }
+        .trash {
+            background-color: #ffecec;
+            border: 2px solid #ff4444;
+            color: #d00;
+            top: 20px;
+        }
+        #saveBtn {
+            background-color: #4CAF50;
+            color: white;
+            top: 80px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="sidebar" id="sidebar"></div>
+<div class="gymsal" id="gymsal"></div>
+<button id="saveBtn">💾 Lagre</button>
+<div class="trash" id="trash">🗑️ Slett</div>
+
+<script>
+const gymsalScale = { width: 1723, height: 890 };
+const gymsalPixelSize = { width: 860, height: 445 };
+let draggedItem = null;
+
+const itemsData = [
+    {name:'Airtrack',length:1590,width:340,color:'#FFB6C1'},
+    {name:'Stor Tjukkas',length:400,width:195,color:'#87CEFA'},
+    {name:'Grønn Tjukkas',length:300,width:195,color:'#98FB98'},
+    {name:'Blå Tjukkas',length:300,width:195,color:'#ADD8E6'},
+    {name:'Grønn Matte',length:190,width:120,color:'#90EE90'},
+    {name:'Grå matte',length:590,width:125,color:'#D3D3D3'},
+    {name:'Stor Kile',length:250,width:150,color:'#FFA07A'},
+    {name:'Liten Kile',length:95,width:100,color:'#FFD700'},
+    {name:'Blå Klosser',length:130,width:60,color:'#4682B4'},
+    {name:'Springbrett',length:80,width:50,color:'#FF8C00'},
+    {name:'Ny Tramp',length:130,width:132,color:'#8A2BE2'},
+    {name:'Gammel Tramp',length:148,width:116,color:'#A52A2A'},
+    {name:'Hest',length:130,width:60,color:'#DEB887'},
+    {name:'Trekasse',length:168,width:60,color:'#CD853F'},
+    {name:'Gammel Klosse',length:135,width:60,color:'#708090'},
+    {name:'Benk',length:300,width:22,color:'#2E8B57'},
+    {name:'Rokkering',length:75,width:75,color:'#FF69B4'}
+];
+
+// Dra-start funksjon
+function dragStart(e) {
+    draggedItem = e.target;
+    e.dataTransfer.setData('text/plain', JSON.stringify({
+        type: draggedItem.dataset.type,
+        length: draggedItem.dataset.length,
+        width: draggedItem.dataset.width,
+        color: draggedItem.style.borderColor
+    }));
+}
+
+// Lag elementer i sidebaren
+const sidebar = document.getElementById('sidebar');
+itemsData.forEach(item => {
+    let div = document.createElement('div');
+    div.className = 'item';
+    div.draggable = true;
+    div.textContent = `${item.name} (${item.length}x${item.width} cm)`;
+    div.dataset.type = item.name;
+    div.dataset.length = item.length;
+    div.dataset.width = item.width;
+    div.style.borderColor = item.color;
+    div.style.backgroundColor = item.color+'55';
+    div.addEventListener('dragstart', dragStart);
+    sidebar.appendChild(div);
+});
+
+// Gymsal dra-og-slipp logikk
+const gymsal = document.getElementById('gymsal');
+gymsal.ondragover = e => e.preventDefault();
+gymsal.ondrop = e => {
+    e.preventDefault();
+    let data = JSON.parse(e.dataTransfer.getData('text/plain'));
+    let el = draggedItem?.classList.contains('dropped') ? draggedItem : document.createElement('div');
+
+    el.className = 'dropped';
+    el.textContent = data.type; 
+    el.style.width = (data.length/gymsalScale.width*gymsalPixelSize.width)+'px';
+    el.style.height = (data.width/gymsalScale.height*gymsalPixelSize.height)+'px';
+    el.style.left = (e.offsetX - parseInt(el.style.width)/2)+'px';
+    el.style.top = (e.offsetY - parseInt(el.style.height)/2)+'px';
+    el.style.borderColor = data.color;
+    el.style.backgroundColor = data.color+'55';
+    el.dataset.type = data.type;
+    el.dataset.rotation = el.dataset.rotation || '0';
+    el.draggable = true;
+
+    el.onclick = () => {
+        el.dataset.rotation = (+el.dataset.rotation + 90) % 360;
+        el.style.transform = `rotate(${el.dataset.rotation}deg)`;
+    };
+
+    el.ondragstart = dragStart;
+    el.ondragend = e => {
+        el.style.left = (e.clientX - gymsal.offsetLeft - parseInt(el.style.width)/2)+'px';
+        el.style.top = (e.clientY - gymsal.offsetTop - parseInt(el.style.height)/2)+'px';
+    };
+
+    gymsal.appendChild(el);
+    draggedItem = null;
+};
+
+// Søppelbøtte for sletting
+const trash = document.getElementById('trash');
+trash.ondragover = e => e.preventDefault();
+trash.ondrop = () => draggedItem && draggedItem.classList.contains('dropped') && draggedItem.remove();
+
+// Lagre gymsal som bilde til utklippstavle
+document.getElementById('saveBtn').onclick = () => {
+    html2canvas(document.querySelector(".gymsal")).then(canvas => {
+        canvas.toBlob(blob => {
+            const item = new ClipboardItem({ "image/png": blob });
+            navigator.clipboard.write([item]).then(() => alert("Bilde kopiert til utklippstavlen!"));
+        });
+    });
+};
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</body>
+</html>
